@@ -1547,9 +1547,6 @@ describe('LexicalSelectionHelpers tests', () => {
         );
       });
 
-      // pasting link in another link
-      // pasting link with no parent element
-
       test('a single heading node with a child text node', async () => {
         const editor = createTestEditor();
         const element = document.createElement('div');
