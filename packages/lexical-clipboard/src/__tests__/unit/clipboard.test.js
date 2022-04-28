@@ -10,6 +10,7 @@ import {$createLinkNode, LinkNode} from '@lexical/link';
 import {$createListItemNode, $createListNode} from '@lexical/list';
 // import {$createHorizontalRuleNode} from '@lexical/react';
 import {$createTableNodeWithDimensions} from '@lexical/table';
+import {$dfs} from '@lexical/utils';
 import {
   $createGridSelection,
   $createParagraphNode,
@@ -23,6 +24,8 @@ import {initializeUnitTest} from 'lexical/src/__tests__/utils';
 import {
   $cloneSelectedLexicalContent,
   $convertSelectedLexicalContentToHtml,
+  $generateNodes,
+  $generateNodesFromDOM,
 } from '../../clipboard';
 
 // No idea why we suddenly need to do this, but it fixes the tests
@@ -53,6 +56,37 @@ export function setFocusPoint(point) {
   focus.type = point.type;
   focus.offset = point.offset;
   focus.key = point.key;
+}
+
+function expectMatchingOutput(editor, cloneState, htmlString) {
+  const parser = new DOMParser();
+  const dom = parser.parseFromString(htmlString, 'text/html');
+
+  const htmlToLexicalTreeRoot = $createParagraphNode();
+  htmlToLexicalTreeRoot.append(...$generateNodesFromDOM(dom, editor));
+
+  const lexicalToLexicalTreeRoot = $createParagraphNode();
+  lexicalToLexicalTreeRoot.append(...$generateNodes(cloneState));
+
+  const htmlToLexicalTreeNodes = $dfs(htmlToLexicalTreeRoot);
+  const lexicalToLexicalNodes = $dfs(lexicalToLexicalTreeRoot);
+
+  expect(htmlToLexicalTreeNodes.length).toBe(lexicalToLexicalNodes.length);
+
+  for (let i = 0; i < htmlToLexicalTreeNodes.length; i++) {
+    const htmlToLexicalNode = htmlToLexicalTreeNodes[i];
+    const lexicalToLexicalDFSNode = htmlToLexicalTreeNodes[i];
+
+    expect(htmlToLexicalNode.depth).toBe(lexicalToLexicalDFSNode.depth);
+
+    Object.keys(htmlToLexicalNode.node).forEach((property) => {
+      if (property !== '__key') {
+        expect(htmlToLexicalNode.node[property]).toBe(
+          lexicalToLexicalDFSNode.node[property],
+        );
+      }
+    });
+  }
 }
 
 const fillEditorWithComplexData = () => {
@@ -203,6 +237,8 @@ describe('Clipboard tests', () => {
         expect(htmlString).toBe(
           '<strong>h</strong><a href="https://"><span>ello wo</span></a>',
         );
+
+        expectMatchingOutput(editor, state, htmlString);
       });
     });
 
@@ -259,6 +295,8 @@ describe('Clipboard tests', () => {
         );
 
         expect(htmlString).toBe('<span>: Lorem ipsum dolor sit</span>');
+
+        expectMatchingOutput(editor, state, htmlString);
       });
     });
 
@@ -320,6 +358,8 @@ describe('Clipboard tests', () => {
         expect(htmlString).toBe(
           '<ul><li value="1"><span>: Lorem ipsum dolor sit amet</span></li><li value="2"><span>2: Lorem ipsum dolor sit</span></li></ul>',
         );
+
+        expectMatchingOutput(editor, state, htmlString);
       });
     });
 
@@ -370,6 +410,8 @@ describe('Clipboard tests', () => {
         expect(htmlString).toBe(
           '<table><colgroup><col><col><col></colgroup><tbody><tr><th style="border: 1px solid black; width: 233.33333333333334px; vertical-align: top; text-align: start; background-color: rgb(242, 243, 245);"><p><span>table cell text!</span></p></th><th style="border: 1px solid black; width: 233.33333333333334px; vertical-align: top; text-align: start; background-color: rgb(242, 243, 245);"><p><br><span></span></p></th></tr><tr><th style="border: 1px solid black; width: 233.33333333333334px; vertical-align: top; text-align: start; background-color: rgb(242, 243, 245);"><p><br><span></span></p></th><td style="border: 1px solid black; width: 233.33333333333334px; vertical-align: top; text-align: start;"><p><br><span></span></p></td></tr></tbody></table>',
         );
+
+        expectMatchingOutput(editor, state, htmlString);
       });
     });
   });

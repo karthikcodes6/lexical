@@ -426,7 +426,7 @@ function $mergeGridNodesStrategy(
   }
 }
 
-function $generateNodes(nodeRange: {
+export function $generateNodes(nodeRange: {
   nodeMap: ParsedNodeMap,
   range: Array<NodeKey>,
 }): Array<LexicalNode> {
@@ -540,7 +540,7 @@ function $createNodesFromDOM(
   return lexicalNodes;
 }
 
-function $generateNodesFromDOM(
+export function $generateNodesFromDOM(
   dom: Document,
   editor: LexicalEditor,
 ): Array<LexicalNode> {
