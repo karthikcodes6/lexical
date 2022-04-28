@@ -98,6 +98,10 @@ export class LinkNode extends ElementNode {
     return false;
   }
 
+  canMergeWith(node: ElementNode): boolean {
+    return $isLinkNode(node);
+  }
+
   isInline(): true {
     return true;
   }

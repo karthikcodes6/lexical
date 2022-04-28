@@ -1131,7 +1131,7 @@ export class RangeSelection implements BaseSelection {
     // Time to insert the nodes!
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
-      if ($isElementNode(node)) {
+      if ($isElementNode(node) && !node.isInline()) {
         // -----
         // Heuristics for the replacment or merging of elements
         // -----
@@ -1225,20 +1225,16 @@ export class RangeSelection implements BaseSelection {
         );
       }
       didReplaceOrMerge = false;
-      if ($isElementNode(target)) {
+      if ($isElementNode(target) && !target.isInline()) {
         lastNodeInserted = node;
         if ($isDecoratorNode(node) && node.isTopLevel()) {
           target = target.insertAfter(node);
         } else if (!$isElementNode(node)) {
           const firstChild = target.getFirstChild();
-          const lastChild = target.getLastChild();
-          if (
-            ($isElementNode(lastChild) && lastChild.isInline()) ||
-            firstChild == null
-          ) {
-            target = target.append(node);
-          } else if (firstChild !== null) {
-            target = firstChild.insertBefore(node);
+          if (firstChild !== null) {
+            firstChild.insertBefore(node);
+          } else {
+            target.append(node);
           }
           target = node;
         } else {
@@ -1254,15 +1250,12 @@ export class RangeSelection implements BaseSelection {
             }
             target = node;
           } else {
-            if (node.isInline()) {
-              target.append(node);
-            } else {
-              target = target.insertAfter(node);
-            }
+            target = target.insertAfter(node);
           }
         }
       } else if (
         !$isElementNode(node) ||
+        ($isElementNode(node) && node.isInline()) ||
         ($isDecoratorNode(target) && target.isTopLevel())
       ) {
         lastNodeInserted = node;
