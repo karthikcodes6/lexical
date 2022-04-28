@@ -17,7 +17,6 @@ import type {
   DOMExportOutput,
 } from '../LexicalNode';
 
-// import {$isLinkNode} from '@lexical/link';
 import {LexicalNode} from '../LexicalNode';
 import {getCachedClassNameArray} from '../LexicalUtils';
 import {ElementNode} from './LexicalElementNode';
