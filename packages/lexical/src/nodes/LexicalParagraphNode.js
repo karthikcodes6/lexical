@@ -106,10 +106,6 @@ export class ParagraphNode extends ElementNode {
     }
     return false;
   }
-  // extractWithChild(child: LexicalNode): boolean {
-  //   // $FlowFixMe $isLinkNode's LexicalNode type doesn't match extractWithChild's. I think it's import issues.
-  //   return $isLinkNode(child);
-  // }
 }
 
 function convertParagraphElement(): DOMConversionOutput {
