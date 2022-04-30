@@ -15,6 +15,7 @@ import {
   COMMAND_PRIORITY_NORMAL,
   createEditor,
 } from './LexicalEditor';
+import {createHeadlessEditor} from './LexicalHeadlessEditor';
 import {$createNodeFromParse} from './LexicalParsing';
 import {
   $createEmptyGridSelection as $createGridSelection,
@@ -91,6 +92,7 @@ export {
   COMMAND_PRIORITY_LOW,
   COMMAND_PRIORITY_NORMAL,
   createEditor,
+  createHeadlessEditor,
   DecoratorNode,
   ElementNode,
   GridCellNode,
