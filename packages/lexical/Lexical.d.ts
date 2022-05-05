@@ -32,6 +32,7 @@ export var KEY_ARROW_LEFT_COMMAND: LexicalCommand<KeyboardEvent>;
 export var KEY_ARROW_UP_COMMAND: LexicalCommand<KeyboardEvent>;
 export var KEY_ARROW_DOWN_COMMAND: LexicalCommand<KeyboardEvent>;
 export var KEY_ENTER_COMMAND: LexicalCommand<KeyboardEvent | null>;
+export var KEY_SPACE_COMMAND: LexicalCommand<KeyboardEvent>;
 export var KEY_BACKSPACE_COMMAND: LexicalCommand<KeyboardEvent>;
 export var KEY_ESCAPE_COMMAND: LexicalCommand<KeyboardEvent>;
 export var KEY_DELETE_COMMAND: LexicalCommand<KeyboardEvent>;
@@ -154,7 +155,9 @@ export declare class LexicalEditor {
   getElementByKey(key: NodeKey): null | HTMLElement;
   getEditorState(): EditorState;
   setEditorState(editorState: EditorState, options?: EditorSetOptions): void;
-  parseEditorState(stringifiedEditorState: string): EditorState;
+  parseEditorState(
+    maybeStringifiedEditorState: string | ParsedEditorState,
+  ): EditorState;
   update(updateFn: () => void, options?: EditorUpdateOptions): boolean;
   focus(callbackFn?: () => void): void;
   blur(): void;
@@ -194,6 +197,8 @@ export type EditorThemeClasses = {
     ol?: EditorThemeClassName;
     olDepth?: Array<EditorThemeClassName>;
     listitem?: EditorThemeClassName;
+    listitemChecked?: EditorThemeClassName;
+    listitemUnchecked?: EditorThemeClassName;
     nested?: {
       list?: EditorThemeClassName;
       listitem?: EditorThemeClassName;
@@ -696,7 +701,7 @@ export declare class ElementNode extends LexicalNode {
   canInsertTab(): boolean;
   canIndent(): boolean;
   collapseAtStart(selection: RangeSelection): boolean;
-  excludeFromCopy(): boolean;
+  excludeFromCopy(destination: 'clone' | 'html'): boolean;
   canExtractContents(): boolean;
   canReplaceWith(replacement: LexicalNode): boolean;
   canInsertAfter(node: LexicalNode): boolean;

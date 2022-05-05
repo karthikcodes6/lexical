@@ -1001,7 +1001,11 @@ export class RangeSelection implements BaseSelection {
     // This is the case where the user only selected the very end of the
     // first node so we don't want to include it in the formatting change.
     if (startOffset === firstNode.getTextContentSize()) {
-      const nextSibling = firstNode.getNextSibling();
+      let nextSibling = firstNode.getNextSibling();
+
+      if ($isElementNode(nextSibling) && nextSibling.isInline()) {
+        nextSibling = nextSibling.getFirstChild();
+      }
 
       if ($isTextNode(nextSibling)) {
         // we basically make the second node the firstNode, changing offsets accordingly
@@ -1154,8 +1158,7 @@ export class RangeSelection implements BaseSelection {
     // Time to insert the nodes!
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
-
-      if ($isElementNode(node)) {
+      if ($isElementNode(node) && !node.isInline()) {
         // -----
         // Heuristics for the replacment or merging of elements
         // -----
@@ -1249,7 +1252,7 @@ export class RangeSelection implements BaseSelection {
         );
       }
       didReplaceOrMerge = false;
-      if ($isElementNode(target)) {
+      if ($isElementNode(target) && !target.isInline()) {
         lastNodeInserted = node;
         if ($isDecoratorNode(node) && node.isTopLevel()) {
           target = target.insertAfter(node);
@@ -1279,6 +1282,7 @@ export class RangeSelection implements BaseSelection {
         }
       } else if (
         !$isElementNode(node) ||
+        ($isElementNode(node) && node.isInline()) ||
         ($isDecoratorNode(target) && target.isTopLevel())
       ) {
         lastNodeInserted = node;
@@ -1421,7 +1425,14 @@ export class RangeSelection implements BaseSelection {
       nodesToMoveLength > 0 &&
       currentElement.isInline()
     ) {
-      currentElement.getParentOrThrow().insertBefore($createParagraphNode());
+      const parent = currentElement.getParentOrThrow();
+      const newElement = parent.insertNewAfter(this);
+      if ($isElementNode(newElement)) {
+        const children = parent.getChildren();
+        for (let i = 0; i < children.length; i++) {
+          newElement.append(children[i]);
+        }
+      }
       return;
     }
     const newElement = currentElement.insertNewAfter(this);
@@ -2066,6 +2077,19 @@ function internalResolveSelectionPoints(
   );
   if (resolvedFocusPoint === null) {
     return null;
+  }
+  if (
+    resolvedAnchorPoint.type === 'element' &&
+    resolvedFocusPoint.type === 'element'
+  ) {
+    const anchorNode = getNodeFromDOM(anchorDOM);
+    const focusNode = getNodeFromDOM(focusDOM);
+    // Ensure if we're selecting the content of a decorator that we
+    // return null for this point, as it's not in the controlled scope
+    // of Lexical.
+    if ($isDecoratorNode(anchorNode) && $isDecoratorNode(focusNode)) {
+      return null;
+    }
   }
 
   // Handle normalization of selection when it is at the boundaries.

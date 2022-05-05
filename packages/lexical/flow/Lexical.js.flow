@@ -31,6 +31,7 @@ declare export var KEY_ARROW_LEFT_COMMAND: LexicalCommand<KeyboardEvent>;
 declare export var KEY_ARROW_UP_COMMAND: LexicalCommand<KeyboardEvent>;
 declare export var KEY_ARROW_DOWN_COMMAND: LexicalCommand<KeyboardEvent>;
 declare export var KEY_ENTER_COMMAND: LexicalCommand<KeyboardEvent | null>;
+declare export var KEY_SPACE_COMMAND: LexicalCommand<KeyboardEvent>;
 declare export var KEY_BACKSPACE_COMMAND: LexicalCommand<KeyboardEvent>;
 declare export var KEY_ESCAPE_COMMAND: LexicalCommand<KeyboardEvent>;
 declare export var KEY_DELETE_COMMAND: LexicalCommand<KeyboardEvent>;
@@ -131,6 +132,7 @@ declare export class LexicalEditor {
   _observer: null | MutationObserver;
   _key: string;
   _readOnly: boolean;
+  _headless: boolean;
   isComposing(): boolean;
   registerUpdateListener(listener: UpdateListener): () => void;
   registerRootListener(listener: RootListener): () => void;
@@ -161,7 +163,9 @@ declare export class LexicalEditor {
   getElementByKey(key: NodeKey): null | HTMLElement;
   getEditorState(): EditorState;
   setEditorState(editorState: EditorState, options?: EditorSetOptions): void;
-  parseEditorState(stringifiedEditorState: string): EditorState;
+  parseEditorState(
+    maybeStringifiedEditorState: string | ParsedEditorState,
+  ): EditorState;
   update(updateFn: () => void, options?: EditorUpdateOptions): boolean;
   focus(callbackFn?: () => void): void;
   blur(): void;
@@ -201,6 +205,8 @@ export type EditorThemeClasses = {
     ol?: EditorThemeClassName,
     olDepth?: Array<EditorThemeClassName>,
     listitem?: EditorThemeClassName,
+    listitemChecked?: EditorThemeClassName,
+    listitemUnchecked?: EditorThemeClassName,
     nested?: {
       list?: EditorThemeClassName,
       listitem?: EditorThemeClassName,
@@ -723,10 +729,15 @@ declare export class ElementNode extends LexicalNode {
   canInsertTab(): boolean;
   canIndent(): boolean;
   collapseAtStart(selection: RangeSelection): boolean;
-  excludeFromCopy(): boolean;
+  excludeFromCopy(destination: 'clone' | 'html'): boolean;
   canExtractContents(): boolean;
   canReplaceWith(replacement: LexicalNode): boolean;
   canInsertAfter(node: LexicalNode): boolean;
+  extractWithChild(
+    child: LexicalNode,
+    selection: RangeSelection | NodeSelection | GridSelection,
+    destination: 'clone' | 'html',
+  ): boolean;
   canBeEmpty(): boolean;
   canInsertTextBefore(): boolean;
   canInsertTextAfter(): boolean;

@@ -7,9 +7,14 @@
  * @flow strict
  */
 
-import type {ListNode} from '@lexical/list';
+import type {
+  ElementTransformer,
+  TextFormatTransformer,
+  TextMatchTransformer,
+} from '../../flow/LexicalMarkdown';
+import type {ListNode, ListType} from '@lexical/list';
 import type {HeadingTagType} from '@lexical/rich-text';
-import type {ElementNode, LexicalNode, TextFormatType, TextNode} from 'lexical';
+import type {ElementNode, LexicalNode} from 'lexical';
 
 import {$createCodeNode, $isCodeNode} from '@lexical/code';
 import {$createLinkNode, $isLinkNode} from '@lexical/link';
@@ -27,43 +32,9 @@ import {
 } from '@lexical/rich-text';
 import {$createTextNode, $isTextNode} from 'lexical';
 
-export type BlockTransformer = {
-  export: (
-    node: LexicalNode,
-    traverseChildren: (node: ElementNode) => string,
-  ) => string | null,
-  regExp: RegExp,
-  replace: (
-    parentNode: ElementNode,
-    children: Array<LexicalNode>,
-    match: Array<string>,
-    isImport: boolean,
-  ) => void,
-  type: 'block-match',
-};
-
-export type TextFormatTransformer = $ReadOnly<{
-  format: $ReadOnlyArray<TextFormatType>,
-  tag: string,
-  type: 'format',
-}>;
-
-export type TextMatchTransformer = $ReadOnly<{
-  export: (
-    node: LexicalNode,
-    exportChildren: (node: ElementNode) => string,
-    exportFormat: (node: TextNode, textContent: string) => string,
-  ) => string | null,
-  importRegExp: RegExp,
-  regExp: RegExp,
-  replace: (node: TextNode, match: RegExp$matchResult) => void,
-  trigger: string,
-  type: 'text-match',
-}>;
-
 const replaceWithBlock = (
   createNode: (match: Array<string>) => ElementNode,
-): BlockTransformer['replace'] => {
+): ElementTransformer['replace'] => {
   return (parentNode, children, match) => {
     const node = createNode(match);
     node.append(...children);
@@ -76,17 +47,19 @@ const replaceWithBlock = (
 // TODO: should be an option
 const LIST_INDENT_SIZE = 4;
 
-const listReplace = (listTag: 'ul' | 'ol'): BlockTransformer['replace'] => {
+const listReplace = (listType: ListType): ElementTransformer['replace'] => {
   return (parentNode, children, match) => {
     const previousNode = parentNode.getPreviousSibling();
-    const listItem = $createListItemNode();
-    if ($isListNode(previousNode) && previousNode.getTag() === listTag) {
+    const listItem = $createListItemNode(
+      listType === 'check' ? match[3] === 'x' : undefined,
+    );
+    if ($isListNode(previousNode) && previousNode.getListType() === listType) {
       previousNode.append(listItem);
       parentNode.remove();
     } else {
       const list = $createListNode(
-        listTag,
-        listTag === 'ol' ? Number(match[2]) : undefined,
+        listType,
+        listType === 'number' ? Number(match[2]) : undefined,
       );
       list.append(listItem);
       parentNode.replace(list);
@@ -118,8 +91,13 @@ const listExport = (
         }
       }
       const indent = ' '.repeat(depth * LIST_INDENT_SIZE);
+      const listType = listNode.getListType();
       const prefix =
-        listNode.getTag() === 'ul' ? '- ' : `${listNode.getStart() + index}. `;
+        listType === 'number'
+          ? `${listNode.getStart() + index}. `
+          : listType === 'check'
+          ? `- [${listItemNode.getChecked() ? 'x' : ' '}] `
+          : '- ';
       output.push(indent + prefix + exportChildren(listItemNode));
       index++;
     }
@@ -128,7 +106,7 @@ const listExport = (
   return output.join('\n');
 };
 
-export const HEADING: BlockTransformer = {
+export const HEADING: ElementTransformer = {
   export: (node, exportChildren) => {
     if (!$isHeadingNode(node)) {
       return null;
@@ -142,19 +120,19 @@ export const HEADING: BlockTransformer = {
     const tag = ('h' + match[1].length: HeadingTagType);
     return $createHeadingNode(tag);
   }),
-  type: 'block-match',
+  type: 'element',
 };
 
-export const QUOTE: BlockTransformer = {
+export const QUOTE: ElementTransformer = {
   export: (node, exportChildren) => {
     return $isQuoteNode(node) ? '> ' + exportChildren(node) : null;
   },
   regExp: /^>\s/,
   replace: replaceWithBlock(() => $createQuoteNode()),
-  type: 'block-match',
+  type: 'element',
 };
 
-export const CODE: BlockTransformer = {
+export const CODE: ElementTransformer = {
   export: (node: LexicalNode) => {
     if (!$isCodeNode(node)) {
       return null;
@@ -172,73 +150,82 @@ export const CODE: BlockTransformer = {
   replace: replaceWithBlock((match) => {
     return $createCodeNode(match ? match[1] : undefined);
   }),
-  type: 'block-match',
+  type: 'element',
 };
 
-export const UNORDERED_LIST: BlockTransformer = {
+export const UNORDERED_LIST: ElementTransformer = {
   export: (node, exportChildren) => {
     return $isListNode(node) ? listExport(node, exportChildren, 0) : null;
   },
   regExp: /^(\s*)[-*+]\s/,
-  replace: listReplace('ul'),
-  type: 'block-match',
+  replace: listReplace('bullet'),
+  type: 'element',
 };
 
-export const ORDERED_LIST: BlockTransformer = {
+export const CHECK_LIST: ElementTransformer = {
+  export: (node, exportChildren) => {
+    return $isListNode(node) ? listExport(node, exportChildren, 0) : null;
+  },
+  regExp: /^(\s*)(?:-\s)?\s?(\[(\s|x)?\])\s/i,
+  replace: listReplace('check'),
+  type: 'element',
+};
+
+export const ORDERED_LIST: ElementTransformer = {
   export: (node, exportChildren) => {
     return $isListNode(node) ? listExport(node, exportChildren, 0) : null;
   },
   regExp: /^(\s*)(\d{1,})\.\s/,
-  replace: listReplace('ol'),
-  type: 'block-match',
+  replace: listReplace('number'),
+  type: 'element',
 };
 
 export const INLINE_CODE: TextFormatTransformer = {
   format: ['code'],
   tag: '`',
-  type: 'format',
+  type: 'text-format',
 };
 
 export const BOLD_ITALIC_STAR: TextFormatTransformer = {
   format: ['bold', 'italic'],
   tag: '***',
-  type: 'format',
+  type: 'text-format',
 };
 
 export const BOLD_ITALIC_UNDERSCORE: TextFormatTransformer = {
   format: ['bold', 'italic'],
   tag: '___',
-  type: 'format',
+  type: 'text-format',
 };
 
 export const BOLD_STAR: TextFormatTransformer = {
   format: ['bold'],
   tag: '**',
-  type: 'format',
+  type: 'text-format',
 };
 
 export const BOLD_UNDERSCORE: TextFormatTransformer = {
   format: ['bold'],
   tag: '__',
-  type: 'format',
+  type: 'text-format',
 };
 
 export const STRIKETHROUGH: TextFormatTransformer = {
   format: ['strikethrough'],
   tag: '~~',
-  type: 'format',
+  type: 'text-format',
 };
 
 export const ITALIC_STAR: TextFormatTransformer = {
   format: ['italic'],
   tag: '*',
-  type: 'format',
+  type: 'text-format',
 };
 
 export const ITALIC_UNDERSCORE: TextFormatTransformer = {
   format: ['italic'],
   tag: '_',
-  type: 'format',
+  type: 'text-format',
 };
 
 // Order of text transformers matters:
